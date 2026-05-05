@@ -1,0 +1,6 @@
+iopaint==1.4.3
+diffusers==0.27.2
+transformers==4.46.3
+accelerate==0.33.0
+huggingface_hub==0.25.2
+gdown==5.2.0

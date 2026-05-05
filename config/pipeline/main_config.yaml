@@ -1,0 +1,387 @@
+# ==============================================================================
+# Main Project Configuration (V8 Active Pipeline)
+# ==============================================================================
+global_params:
+  project_name: "ancient_greek_artifact_restoration"
+  version: 2.2
+  timestamp: "2026-02-01"
+  random_state: 42
+
+paths:
+  data:
+    raw: "data/01_raw/combined_collection"
+    intermediate: "data/intermediate"
+    filtered: "data/intermediate/02_filtered"
+    processed: "data/intermediate/06_processed"
+    splits: "data/intermediate/07_splits"
+    inpainting: "data/intermediate/08_inpainting"
+    models: "data/intermediate/10_models"
+
+  artifacts:
+    root: "outputs"
+    # Canonical stage output directories (S00-S18)
+    S00: "outputs/S00_reproducibility"
+    S01: "outputs/S01_research_design"
+    S02: "outputs/S02_data_acquisition"
+    S03: "outputs/S03_intelligent_filtering"
+    S04: "outputs/S04_yolo_validation"
+    S05: "outputs/S05_baselines"
+    S06: "outputs/S06_exploratory_data_analysis"
+    S07: "outputs/S07_caption_generation"
+    S08: "outputs/S08_caption_refinement"
+    S09: "outputs/S09_data_processing"
+    S10: "outputs/S10_data_splitting"
+    S11: "outputs/S11_feature_engineering"
+    S12: "outputs/S12_hyperparameter_tuning"
+    S13: "outputs/S13_model_training"
+    S14: "outputs/S14_baseline_finetuning"
+    S15: "outputs/S15_model_evaluation"
+    S16: "outputs/S16_deployment_preparation"
+    S17: "outputs/S17_reporting"
+    S18: "outputs/S18_expert_validation"
+    logs: "outputs/00_logs"
+
+logging:
+  log_dir: "outputs/00_logs"
+  main_log_file: "thesis_pipeline.log"
+  log_level: "INFO"
+
+pipeline:
+  version_label: "V8"
+  strict_fail_policy: true
+  resume_enabled: true
+  guardrail_strict_fail: true
+  preflight:
+    enabled: true
+    require_research_docs: false
+    require_europeana_api_key: true
+    require_git_clean: false
+  strict_mode:
+    enabled: true
+    stage_toggles:
+      S00: true
+      S01: true
+      S02: true
+      S03: true
+      S04: true
+      S05: true
+      S06: true
+      S07: true
+      S08: true
+      S09: true
+      S10: true
+      S11: true
+      S12: true
+      S13: true
+      S14: true
+      S15: true
+      S16: true
+      S17: true
+      S18: true
+
+# ==============================================================================
+# STAGE-SPECIFIC CONFIGURATIONS
+# ==============================================================================
+
+data_acquisition:
+  wikimedia_api_url: "https://commons.wikimedia.org/w/api.php"
+  start_category: "Ancient Greek pottery"
+  # Multi-source acquisition (Phase 1): 10k/source -> up to 20k total.
+  max_per_source: 10000
+  wikimedia_enabled: true
+  wikimedia_limit: 10000
+  download_limit: 10000
+  europeana_enabled: true
+  europeana_limit: 10000
+  europeana_query: "ancient greek vase"
+  europeana_query_variants:
+    - "ancient greek vase"
+    - "attic red figure vase"
+    - "ancient greek pottery"
+    - "attic black figure amphora"
+  # Optional additional Europeana facet filters.
+  # Example for collection locking: ["DATASET:<collection_id>"]
+  europeana_qf_filters: []
+  europeana_copyright_free_only: true
+  europeana_additional_copyright_free_rights: []
+  # Optional dataset IDs (translated to qf=DATASET:<id>).
+  europeana_collection_ids: []
+  europeana_rows: 100
+  europeana_reusability: "open"
+  # Optional: reset Europeana crawl cursor per run while keeping downloaded files.
+  europeana_reset_state_on_run: false
+  # When resetting state, keep a timestamped backup of the previous cursor file.
+  europeana_backup_state_before_reset: true
+  validity:
+    min_total_images: 100
+    require_enabled_source_nonzero: true
+    require_europeana_key_when_enabled: true
+
+data_cleaning:
+  min_width: 256
+  min_height: 256
+  color_check: true
+  saturation_threshold: 20.0
+  whiteness_threshold: 0.85
+
+intelligent_filtering:
+  model_name: "data/models/weights/yolov8x.pt"
+  ground_truth: "data/labels/ground_truth_50.json"
+  confidence_threshold: 0.25
+  yolo_accept_confidence: 0.90
+  padding_ratio: 0.1
+  target_class_id: 75
+  blur_metric: "tenengrad"
+  blur_resize_max_dim: 512
+  blur_threshold_main: 4500.0
+  blur_threshold_relaxed: 3000.0
+  high_confidence_gate: 0.85
+  min_area_ratio: 0.04
+  bias_audit:
+    max_acceptance_rate_gap: 0.15
+    strict_fail_on_disparity: true
+  mock: false
+
+exploratory_data_analysis:
+  image_extensions: [".jpg", ".jpeg", ".png"]
+  plot_samples: 10
+
+caption_generation:
+  model_name: "Salesforce/blip2-opt-2.7b"
+  mock: false
+  batch_size: 4
+  max_new_tokens: 50
+  failure_policy: "hard_fail"
+  success_rate_min: 0.90
+  oom_retry_limit: 1
+  oom_backoff_max_new_tokens: 24
+  cleanup_cuda_cache: true
+  max_worker_fail_streak: 10
+  spatial_purity:
+    min_spatial_keyword_rate: 0.80
+    strict_fail: true
+  grounding_validation:
+    min_quadrant_macro_f1: 0.60
+    min_border_touch_accuracy: 0.75
+    min_area_correlation: 0.40
+    strict_fail: true
+  spatial_regeneration:
+    enabled: true
+    max_attempts: 2
+    max_new_tokens: 40
+    strict_fail: true
+    max_contamination_ratio: 0.50
+    whitelist_terms:
+      - left
+      - right
+      - center
+      - upper
+      - lower
+      - rim
+      - neck
+      - handle
+      - base
+      - body
+      - edge
+      - crack
+      - chip
+      - fracture
+      - missing
+      - damaged
+      - broken
+    blacklist_terms:
+      - beautiful
+      - masterpiece
+      - high quality
+      - award-winning
+      - gorgeous
+      - deity
+      - warrior
+      - hero
+      - athena
+      - dionysus
+      - iconography
+      - motif
+      - pattern
+      - decoration
+    fallback_prompt: "Question: Describe only the spatial location and physical damage area on this vessel (rim/neck/handle/body/base + left/right/upper/lower/center), without stylistic adjectives. Answer:"
+
+caption_refinement:
+  model_name: "Qwen/Qwen2.5-7B-Instruct"
+  mock: false
+  max_tokens: 150
+  clip_safe_word_cap: 60
+  failure_policy: "hard_fail"
+  success_rate_min: 0.90
+  max_worker_fail_streak: 10
+
+data_processing:
+  image_size: [512, 512]
+  format: "png"
+
+data_splitting:
+  ratios: [0.8, 0.1, 0.1] # train, val, test
+
+feature_engineering:
+  mask_types: ["irregular", "rect", "edge"]
+  max_masks_per_image: 3
+  min_coverage: 0.22
+  max_coverage: 0.35
+  foreground_roi: true
+  max_retries: 20
+  box_min_ratio: 0.28
+  box_max_ratio: 0.55
+  irregular_min_strokes: 5
+  irregular_max_strokes: 10
+  irregular_min_width: 24
+  irregular_max_width: 45
+  edge_depth_ratio: 0.25
+
+mask_realism:
+  blur_masks: true
+  edge_dilation: 2
+
+hyperparameter_tuning:
+  mode: "mini_sweep"
+  learning_rate_range: [1e-6, 5e-5]
+  max_trials: 8
+  mini_sweep:
+    lr_values: [5e-6, 7e-6, 1e-5, 1.2e-5]
+    adam_weight_decay_values: [5e-3, 1e-2]
+    lr_warmup_steps_values: [100, 300]
+    max_grad_norm_values: [0.8, 1.0]
+    selection_metric: "best_val_loss"
+    early_stopping_patience: 3
+
+training:
+  device: "cuda"
+  train_batch_size: 4
+  num_epochs: 10
+  mixed_precision: "fp16"
+  mock: false
+  kfold:
+    enabled: true
+    n_splits: 3
+    source_splits: ["train", "validation"]
+
+model_training:
+  resume_trials: true
+  checkpoint_every_epochs: 1
+  resume_epoch_checkpoints: true
+  run_final_pass_after_sweep: true
+  prompt_token_budget: 77
+  log_prompt_truncation: true
+  conditioning_finetune_mode: "cross_attention_plus_output"
+  mask_aware_loss: true
+  mask_loss_inside_weight: 2.5
+  mask_loss_outside_weight: 0.5
+  mask_loss_threshold: 0.5
+  ema_enabled: true
+  ema_decay: 0.999
+  ema_update_after_step: 0
+  use_ema_for_validation: true
+  use_ema_for_saving: true
+  balanced_mask_sampling: true
+  balanced_sampling_target: "median"
+  balanced_sampling_area_thresholds: [0.12, 0.30]
+  balanced_sampling_seed: 42
+  conditioning_interaction_analysis:
+    enabled: true
+    max_abs_interaction: 0.05
+  regime_comparison:
+    enabled: true
+    compare_metric: "best_val_loss"
+    strict_fail: true
+    source_sampling:
+      wikimedia_to_europeana_ratio: 261
+      seed: 42
+    biased_regime_overrides:
+      balanced_mask_sampling: false
+      conditioning_finetune_mode: "cross_attention_only"
+    balanced_regime_overrides:
+      balanced_mask_sampling: false
+      conditioning_finetune_mode: "cross_attention_plus_output"
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true
+  dataloader_persistent_workers: true
+
+model_evaluation:
+  phase: "full_test"
+  num_inference_steps: 50
+  num_samples_to_evaluate: 200
+  resume_from_checkpoint: true
+  checkpoint_every_samples: 5
+  caption_coverage_min: 0.30
+  include_spatial_condition: true
+  device: "cuda"
+  mock: false
+  frozen_control_integrity:
+    enabled: true
+    strict_fail: true
+    freeze_on_first_run: true
+  # Optional: prompt-sensitivity sweep across multiple seeds (expensive).
+  # This does not change the main benchmarking matrix; it writes extra artifacts:
+  # `outputs/13_model_evaluation/benchmarking_matrix/prompt_seed_sweep.csv`
+  # and `.../prompt_seed_sweep_summary.json`.
+  seed_sweep:
+    enabled: false
+    seeds: [42, 43, 44, 45, 46]
+    max_samples: 25
+  significance_matrix:
+    enabled: true
+    scopes: ["unconditional", "condition_expanded"]
+    families: ["big_vs_base", "big_four_internal"]
+    output_subdir: "significance_matrix"
+  deep_baselines:
+    enabled: true
+    required: true
+    required_models: ["LaMa", "MAT", "CoModGAN"]
+    device: "cuda"
+    max_size: 512
+    comodgan:
+      # CoModGAN runs via MI-GAN's inference code (repo cloned and pinned at runtime).
+      migan_git_url: "https://github.com/Picsart-AI-Research/MI-GAN.git"
+      migan_commit: "2381ef9d322caa4f90550f4b7072a6f681efb8c2"
+      model_name: "comodgan-512"
+      # Official link from MI-GAN README (downloads to weights_dir via gdown).
+      weights_url: "https://drive.google.com/drive/folders/1VATyNQQJW2VpuHND02bc-3_4ukJMHQ44"
+
+deployment_preparation:
+  export_formats: ["onnx", "pt"]
+
+reporting:
+  generate_plots: true
+  include_samples: true
+  optional_artifacts:
+    require_expert_responses: false
+    require_regime_source_interaction: false
+    require_spatial_conditioning_artifacts: false
+
+expert_validation:
+  samples_to_select: 20
+  mode: "top1_vs_real"
+  # mode: top1_vs_real — automatically selects the top-ranked method from S08 evaluation
+  # and compares it against real undamaged images in a blinded survey.
+  condition: "Unconditional"
+  practice_samples: 3
+  anchor_samples: 3
+  expert_count: 10
+
+baseline_finetuning:
+  enabled: true
+  models: ["LaMa", "MAT", "CoModGAN"]
+  epochs: 50
+  early_stopping_patience: 10
+  batch_size: 8
+  learning_rate: 1.0e-4
+  device: "cuda"
+  checkpoint_dir: "data/intermediate/10_models/baselines"
+  lama:
+    config: "default"
+    resume_path: null
+  mat:
+    config: "default"
+    resume_path: null
+  comodgan:
+    config: "default"
+    resume_path: null

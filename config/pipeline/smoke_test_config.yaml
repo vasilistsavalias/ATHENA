@@ -1,0 +1,196 @@
+# ==============================================================================
+# SMOKE TEST Configuration (V7 Rigor) - REAL MINI-RUN
+# ==============================================================================
+global_params:
+  project_name: "ancient_greek_artifact_restoration_smoke_test"
+  version: 2.2
+  timestamp: "2026-02-01"
+  random_state: 42
+  dataset_limit: 50  # Set between 10-50 for a small real run.
+
+paths:
+  data:
+    # Stage 02 writes to per-source folders:
+    #   <raw>/wikimedia, <raw>/europeana
+    raw: "data/01_raw/smoke_multi_source"
+    intermediate: "smoke_tests/last_run/data/intermediate"
+    filtered: "smoke_tests/last_run/data/intermediate/02_filtered"
+    processed: "smoke_tests/last_run/data/intermediate/06_processed"
+    splits: "smoke_tests/last_run/data/intermediate/07_splits"
+    inpainting: "smoke_tests/last_run/data/intermediate/08_inpainting"
+    models: "smoke_tests/last_run/data/intermediate/10_models"
+
+  artifacts:
+    root: "smoke_tests/last_run"
+    # Canonical names
+    S00: "smoke_tests/last_run/S00_reproducibility"
+    S01: "smoke_tests/last_run/S01_research_design"
+    S02: "smoke_tests/last_run/S02_data_acquisition"
+    S03: "smoke_tests/last_run/S03_intelligent_filtering"
+    S04: "smoke_tests/last_run/S04_yolo_validation"
+    S05: "smoke_tests/last_run/S05_baselines"
+    S06: "smoke_tests/last_run/S06_exploratory_data_analysis"
+    S07: "smoke_tests/last_run/S07_caption_generation"
+    S08: "smoke_tests/last_run/S08_caption_refinement"
+    S09: "smoke_tests/last_run/S09_data_processing"
+    S10: "smoke_tests/last_run/S10_data_splitting"
+    S11: "smoke_tests/last_run/S11_feature_engineering"
+    S12: "smoke_tests/last_run/S12_hyperparameter_tuning"
+    S13: "smoke_tests/last_run/S13_model_training"
+    S14: "smoke_tests/last_run/S14_baseline_finetuning"
+    S15: "smoke_tests/last_run/S15_model_evaluation"
+    S16: "smoke_tests/last_run/S16_deployment_preparation"
+    S17: "smoke_tests/last_run/S17_reporting"
+    S18: "smoke_tests/last_run/S18_expert_validation"
+    logs: "smoke_tests/last_run/00_logs"
+
+logging:
+  log_dir: "smoke_tests/last_run/00_logs"
+  main_log_file: "thesis_pipeline_smoke_test.log"
+  log_level: "INFO"
+
+# ==============================================================================
+# STAGE CONFIGS (Real pipeline, limited N)
+# ==============================================================================
+
+data_acquisition:
+  wikimedia_api_url: "https://commons.wikimedia.org/w/api.php"
+  start_category: "Ancient Greek pottery"
+  # Smoke tests should not require external keys; keep non-Wikimedia sources disabled.
+  max_per_source: 50
+  wikimedia_enabled: true
+  wikimedia_limit: 50
+  download_limit: 50
+  europeana_enabled: false
+  europeana_limit: 0
+  europeana_query: "ancient greek vase"
+  europeana_rows: 50
+  europeana_reusability: "open"
+  europeana_reset_state_on_run: false
+  europeana_backup_state_before_reset: true
+
+data_cleaning:
+  min_width: 256
+  min_height: 256
+  color_check: true
+  saturation_threshold: 20.0
+  whiteness_threshold: 0.85
+
+intelligent_filtering:
+  model_name: "data/models/weights/yolov8x.pt"
+  ground_truth: "data/labels/ground_truth_50.json"
+  confidence_threshold: 0.25
+  yolo_accept_confidence: 0.90
+  padding_ratio: 0.1
+  target_class_id: 75
+  blur_metric: "tenengrad"
+  blur_resize_max_dim: 512
+  blur_threshold_main: 4500.0
+  blur_threshold_relaxed: 3000.0
+  high_confidence_gate: 0.85
+  min_area_ratio: 0.04
+  mock: false
+  limit: 50
+
+exploratory_data_analysis:
+  image_extensions: [".jpg", ".jpeg", ".png"]
+  plot_samples: 2
+
+caption_generation:
+  model_name: "Salesforce/blip2-opt-2.7b"
+  mock: false
+  limit: 50
+  max_new_tokens: 50
+  failure_policy: "hard_fail"
+  success_rate_min: 0.90
+  oom_retry_limit: 1
+  oom_backoff_max_new_tokens: 24
+  cleanup_cuda_cache: true
+  max_worker_fail_streak: 10
+
+caption_refinement:
+  model_name: "Qwen/Qwen2.5-7B-Instruct"
+  mock: false
+  limit: 50
+  clip_safe_word_cap: 60
+  failure_policy: "hard_fail"
+  success_rate_min: 0.90
+  max_worker_fail_streak: 10
+
+data_processing:
+  image_size: [512, 512]
+  format: "png"
+  limit: 50
+
+data_splitting:
+  ratios: [0.8, 0.1, 0.1]
+
+feature_engineering:
+  mask_types: ["irregular", "rect", "edge"]
+  max_masks_per_image: 3
+  min_coverage: 0.22
+  max_coverage: 0.35
+  foreground_roi: true
+  max_retries: 20
+  box_min_ratio: 0.28
+  box_max_ratio: 0.55
+  irregular_min_strokes: 5
+  irregular_max_strokes: 10
+  irregular_min_width: 24
+  irregular_max_width: 45
+  edge_depth_ratio: 0.25
+
+mask_realism:
+  blur_masks: true
+  edge_dilation: 2
+
+hyperparameter_tuning:
+  mode: "mini_sweep"
+  learning_rate_range: [1e-6, 5e-5]
+  max_trials: 2
+  mini_sweep:
+    lr_values: [7e-6, 1.2e-5]
+    adam_weight_decay_values: [1e-2]
+    selection_metric: "best_val_loss"
+    early_stopping_patience: 2
+
+training:
+  device: "cuda"
+  train_batch_size: 4
+  num_epochs: 2
+  mixed_precision: "fp16"
+  mock: false
+  kfold:
+    enabled: true
+    n_splits: 2
+    source_splits: ["train", "validation"]
+
+model_evaluation:
+  num_inference_steps: 50
+  num_samples_to_evaluate: 50
+  resume_from_checkpoint: true
+  checkpoint_every_samples: 2
+  device: "cuda"
+  mock: false
+  deep_baselines:
+    enabled: false
+
+deployment_preparation:
+  output_dir: "smoke_tests/last_run/S16_deployment_preparation"
+  export_formats: ["pt"]
+
+reporting:
+  generate_plots: true
+  include_samples: true
+
+expert_validation:
+  samples_to_select: 2
+  mode: "top1_vs_real"
+  condition: "Unconditional"
+
+baseline_finetuning:
+  enabled: false
+  models: ["LaMa"]
+  epochs: 2
+  batch_size: 4
+  device: "cuda"

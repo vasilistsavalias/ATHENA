@@ -1,0 +1,217 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thesis_pipeline"
+version = "2.0.0"
+description = "Ancient Greek Artifact Restoration Pipeline using Stable Diffusion & BLIP-2"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE.md"}
+authors = [
+    {name = "ATHENA Research Pipeline Contributors"}
+]
+keywords = ["machine-learning", "computer-vision", "heritage-conservation", "stable-diffusion", "image-restoration"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+# Dependencies managed through requirements.txt
+# This setup allows both pip install -e . and pip install -r requirements.txt
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["thesis_pipeline*"]
+
+# =============================================================================
+# Code Formatting: Black
+# =============================================================================
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | __pycache__
+  | build
+  | dist
+  | outputs
+  | data
+  | conductor
+)/
+'''
+
+# =============================================================================
+# Linting: Ruff (Fast Python Linter - replaces flake8, isort, etc.)
+# =============================================================================
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+# Exclude directories
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "outputs",
+    "data",
+    "conductor",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Enable rule categories: pycodestyle (E, W), pyflakes (F), isort (I), etc.
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "N",   # pep8-naming
+    "UP",  # pyupgrade (modern Python syntax)
+    "B",   # flake8-bugbear (common bugs)
+]
+
+# Ignore specific rules
+ignore = [
+    "E203",  # Whitespace before ':' (conflicts with black)
+    "E501",  # Line too long (handled by black)
+    "W503",  # Line break before binary operator (conflicts with black)
+    "B008",  # Do not perform function call in argument defaults (common in FastAPI/Click)
+]
+
+# Allow unused variables when prefixed with underscore
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+# Allow unused imports in __init__.py files
+"__init__.py" = ["F401"]
+# Allow print statements in scripts
+"scripts/**/*.py" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["thesis_pipeline"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+# =============================================================================
+# Type Checking: MyPy
+# =============================================================================
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Set to true for strict type checking
+ignore_missing_imports = true  # Many ML libraries lack stubs
+
+# Exclude directories
+exclude = [
+    "^conductor/",
+    "^outputs/",
+    "^data/",
+    "^build/",
+    "^dist/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "PIL.*",
+    "cv2.*",
+    "transformers.*",
+    "diffusers.*",
+    "torch.*",
+    "torchvision.*",
+    "accelerate.*",
+    "scipy.*",
+    "skimage.*",
+    "ultralytics.*",
+]
+ignore_missing_imports = true
+
+# =============================================================================
+# Testing: Pytest
+# =============================================================================
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Output options
+addopts = [
+    "--verbose",
+    "--strict-markers",
+    "--tb=short",
+    "--disable-warnings",
+]
+
+# Markers for categorizing tests
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "gpu: marks tests requiring GPU",
+    "integration: marks tests as integration tests (vs unit tests)",
+    "stage: marks tests for specific pipeline stages",
+]
+
+# Coverage options (when using pytest-cov)
+[tool.coverage.run]
+source = ["src/thesis_pipeline"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+precision = 2
+show_missing = true
+
+# =============================================================================
+# Additional Tool Configurations
+# =============================================================================
+
+# Bandit (security linting) - if added later
+[tool.bandit]
+exclude_dirs = ["tests", "conductor", "outputs"]
+skips = ["B101"]  # Skip assert_used (common in tests)
+
+# =============================================================================
+# Development Scripts (optional - for future automation)
+# =============================================================================
+# Uncomment and add to [project.scripts] if you want CLI commands:
+# [project.scripts]
+# thesis-pipeline = "thesis_pipeline.main:cli"
+# thesis-lint = "scripts.utilities.lint:main"

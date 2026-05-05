@@ -1,0 +1,33 @@
+torch>=2.0.0
+torchvision
+# HF stack pins:
+# - `transformers<5` and `accelerate<1` avoid major-version breaking changes
+# - `huggingface_hub<1` avoids hub v1 breaking surface
+# - `diffusers<0.37` is a short-term stability cap (we can relax later when validated on GCP)
+diffusers>=0.36.0,<0.37.0
+huggingface_hub>=0.23.0,<1.0.0
+peft>=0.17.0,<1.0.0
+transformers>=4.26.0,<5.0.0
+accelerate>=0.16.0,<1.0.0
+pandas<3.0.0
+numpy<2.0.0
+matplotlib
+seaborn
+requests
+tqdm
+Pillow<11.0.0
+opencv-python
+scikit-image
+scikit-learn
+pyyaml
+lpips
+pytest
+pytest-mock
+python-box
+loguru
+ultralytics
+bitsandbytes
+scipy
+statsmodels
+openpyxl
+gdown

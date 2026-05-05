@@ -1,0 +1,45 @@
+extends: "main_config.yaml"
+
+global_params:
+  version: 8.0
+  run_profile: "final_thesis_v8"
+
+pipeline:
+  version_label: "V8"
+  strict_fail_policy: true
+  resume_enabled: false
+  preflight:
+    enabled: true
+    require_research_docs: false
+    require_europeana_api_key: true
+    require_git_clean: true
+
+caption_generation:
+  spatial_purity:
+    strict_fail: false
+  grounding_validation:
+    strict_fail: false
+  spatial_regeneration:
+    strict_fail: false
+
+model_evaluation:
+  include_spatial_condition: false
+  resume_from_checkpoint: false
+
+model_training:
+  resume_trials: false
+  regime_comparison:
+    enabled: false
+    strict_fail: false
+
+reporting:
+  optional_artifacts:
+    require_expert_responses: false
+    require_regime_source_interaction: false
+    require_spatial_conditioning_artifacts: false
+
+expert_validation:
+  practice_samples: 3
+  anchor_samples: 3
+  expert_count: 10
+  responses_required: false
